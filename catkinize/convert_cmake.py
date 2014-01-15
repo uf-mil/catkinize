@@ -92,7 +92,11 @@ def convert_cmake(project_path, cmakelists_path=None, manifest_xml_path=None):
         content = f_in.read()
 
     # get dependencies from manifest file
-    dependencies = list(get_dependencies(manifest_xml_path, project_path))
+    dependencies = set(get_dependencies(manifest_xml_path, project_path))
+    dependencies.update(utils.get_message_dependencies(project_path))
+    dependencies.update(utils.get_service_dependencies(project_path))
+    dependencies.update(utils.get_action_dependencies(project_path))
+    dependencies.discard(project_name)
 
     # anything that looks like a macro or function call (broken for nested
     # round parens)
@@ -141,7 +145,9 @@ def convert_cmake(project_path, cmakelists_path=None, manifest_xml_path=None):
     lines = content.splitlines()
     if not [l for l in lines if 'catkin_package' in l]:
         header_dependencies = set(dependencies)
-        if utils.get_message_files(project_path):
+        if utils.get_message_files(project_path) or \
+                utils.get_service_files(project_path) or \
+                utils.get_action_files(project_path):
             header_dependencies.add('message_generation')
         
         header = make_header_lines(project_name, ' '.join(header_dependencies))
@@ -152,7 +158,8 @@ def convert_cmake(project_path, cmakelists_path=None, manifest_xml_path=None):
             result_string += (new_snippet or old_snippet)
 
     with_messages = ('add_message_files' in result_string or
-                     'add_service_files' in result_string)
+                     'add_service_files' in result_string or
+                     'add_action_files' in result_string)
     result_string += make_package_lines(' '.join(dependencies), with_messages, project_path)
     return result_string
 
@@ -220,12 +227,17 @@ catkin_package(
 )'''
 
     comment_symbol = '' if with_messages else '#'
-    msg_dependencies = ' '.join(utils.get_message_dependencies(project_path))
+    msg_dependencies = set()
+    msg_dependencies.update(utils.get_message_dependencies(project_path))
+    msg_dependencies.update(utils.get_service_dependencies(project_path))
+    msg_dependencies.update(utils.get_action_dependencies(project_path))
+    if utils.get_action_files(project_path):
+        msg_dependencies.add('actionlib_msgs')
     dependencies = deps_str if deps_str.strip() else '# TODO add dependencies'
 
     return PACKAGE_LINES % {
         'comment_symbol': comment_symbol,
-        'msg_dependencies': msg_dependencies,
+        'msg_dependencies': ' '.join(msg_dependencies),
         'dependencies': dependencies
     }
 
@@ -255,7 +267,7 @@ def convert_snippet(name, funargs, project_path):
                 break
     if not converted:
         if 'include' == name.strip():
-            if 'rosbuild' in funargs:
+            if 'rosbuild' in funargs or 'actionbuild.cmake' in funargs:
                 snippet = comment(
                     snippet,
                     '\n# CATKIN_MIGRATION: removed during catkin migration')
@@ -265,7 +277,15 @@ def convert_snippet(name, funargs, project_path):
             snippet = 'add_message_files(\n  FILES\n' + ''.join('  %s\n' % (filename,) for filename in utils.get_message_files(project_path)) + ')'
             converted = True
         elif 'rosbuild_gensrv' == name.strip():
-            snippet = 'add_service_files(\n  FILES\n  # TODO: List your msg files here\n)'
+            snippet = 'add_service_files(\n  FILES\n' + ''.join('  %s\n' % (filename,) for filename in utils.get_service_files(project_path)) + ')'
+            converted = True
+        elif 'rosbuild_find_ros_package' == name.strip():
+            snippet = 'find_package(catkin REQUIRED %s)' % (
+                funargs.strip()[1:-1],
+            )
+            converted = True
+        elif 'genaction' == name.strip():
+            snippet = 'add_action_files(\n  FILES\n' + ''.join('  %s\n' % (filename,) for filename in utils.get_action_files(project_path)) + ')'
             converted = True
     return snippet
 

@@ -177,7 +177,9 @@ def make_from_manifest(manifest_xml_str,
     
     build_depends = list(depends)
     run_depends = list(depends)
-    if utils.get_message_files(package_path):
+    if utils.get_message_files(package_path) or \
+            utils.get_service_files(package_path) or \
+            utils.get_action_files(package_path):
         build_depends.insert(0, 'message_generation')
         run_depends.insert(0, 'message_runtime')
     

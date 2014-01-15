@@ -12,22 +12,34 @@ def is_valid_version(version):
     return match is not None
 
 
-def get_message_files(project_path):
-    if not os.path.exists(os.path.join(project_path, 'msg')):
-      return []
-    return [filename for filename in os.listdir(os.path.join(project_path, 'msg')) if filename.endswith('.msg')]
+def produce_funcs(directory, ext):
+    def get_files(project_path):
+        if not os.path.exists(os.path.join(project_path, directory)):
+            return []
+        return [filename for filename in os.listdir(os.path.join(project_path, directory)) if filename.endswith(ext)]
 
 
-def get_message_dependencies(project_path):
-    result = set()
-    
-    for message_file in get_message_files(project_path):
-        msg_context = msg_loader.MsgContext()
-        file_path = os.path.join(project_path, 'msg', message_file)
-        full_name = 'null/null' # doesn't matter so don't bother being correct
-        msgspec = msg_loader.load_msg_from_file(msg_context, file_path, full_name)
+    def get_dependencies(project_path):
+        result = set()
         
-        result.update(type_.split('/')[0]
-          for type_ in msgspec.types if '/' in type_)
+        for filename in get_files(project_path):
+            with open(os.path.join(project_path, directory, filename), 'rb') as f:
+                for line in f:
+                    line = line.split('#')[0].strip()
+                    if not line or line == '---': continue
+                    type_, name = line.split(' ')
+                    type_ = type_.split('[')[0]
+                    
+                    if '/' in type_:
+                        pkg, type2_ = type_.split('/')
+                        result.add(pkg)
+                    elif type_ == 'Header':
+                        result.add('std_msgs')
+        
+        return result
     
-    return result
+    return get_files, get_dependencies
+
+get_message_files, get_message_dependencies = produce_funcs('msg', '.msg')
+get_service_files, get_service_dependencies = produce_funcs('srv', '.srv')
+get_action_files, get_action_dependencies = produce_funcs('action', '.action')
