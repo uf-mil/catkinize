@@ -30,7 +30,7 @@
 
 from optparse import OptionParser
 
-from catkinize.main import catkinize_stack, prompt_changes, perform_changes
+from catkinize.main import catkinize_package, prompt_changes, perform_changes
 from catkinize.utils import is_valid_version
 
 
@@ -53,7 +53,7 @@ working with catkin.'''
     if not is_valid_version(version):
         parser.error("The version must have the format: \d.\d.\d")
 
-    changeset = catkinize_stack(path, version)
+    changeset = catkinize_package(path, version)
     if prompt_changes(changeset):
         perform_changes(changeset)
 
