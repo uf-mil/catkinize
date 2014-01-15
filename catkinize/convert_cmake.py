@@ -205,7 +205,7 @@ project(%s)
 # TODO: remove all from COMPONENTS that are not catkin packages.
 find_package(catkin REQUIRED %s)
 
-# include_directories(include ${Boost_INCLUDE_DIR} ${catkin_INCLUDE_DIRS})
+include_directories(include ${Boost_INCLUDE_DIR} ${catkin_INCLUDE_DIRS})
 ''' % (project_name, components_str)
     return header.strip().splitlines()
 
@@ -222,7 +222,7 @@ def make_package_lines(deps_str, with_messages, project_path):
 catkin_package(
     DEPENDS %(dependencies)s
     CATKIN_DEPENDS # TODO
-    INCLUDE_DIRS # TODO include
+    INCLUDE_DIRS %(include_dir)s# TODO include
     LIBRARIES # TODO
 )'''
 
@@ -238,7 +238,8 @@ catkin_package(
     return PACKAGE_LINES % {
         'comment_symbol': comment_symbol,
         'msg_dependencies': ' '.join(msg_dependencies),
-        'dependencies': dependencies
+        'dependencies': dependencies,
+        'include_dir': 'include ' if os.path.exists(os.path.join(project_path, 'include')) else '',
     }
 
 
