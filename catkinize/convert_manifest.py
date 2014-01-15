@@ -85,7 +85,8 @@ def convert_manifest(package_path,
                      metapackage=False,
                      bugtracker_url='',
                      replaces=None,
-                     conflicts=None):
+                     conflicts=None,
+                     maintainer_emails=None):
     """
     Convert the given manifest.xml to a catkinized package.xml file (still
     a string representation).
@@ -108,7 +109,8 @@ def convert_manifest(package_path,
                                          bugtracker_url,
                                          replaces,
                                          conflicts,
-                                         package_path)
+                                         package_path,
+                                         maintainer_emails)
             pkg_xml = '\n'.join(merge_adjacent_dups(pkg_xml.splitlines()))
             return pkg_xml
 
@@ -122,7 +124,7 @@ def make_from_manifest(manifest_xml_str,
                        package_name,
                        version,
                        architecture_independent, metapackage,
-                       bugtracker_url, replaces, conflicts, package_path):
+                       bugtracker_url, replaces, conflicts, package_path, maintainer_emails):
     """
     Return a package.xml sturcture filled with the data from the given
     manifest_xml_str.
@@ -167,7 +169,7 @@ def make_from_manifest(manifest_xml_str,
     licenses_str = xml_lib.xml_find(manifest, 'license').text
     licenses = SPACE_COMMA_RX.split(licenses_str)
     website_url = xml_lib.xml_find(manifest, 'url').text
-    maintainers = [(a, {'email': ''})
+    maintainers = [(a, {'email': maintainer_emails.get(a, '')})
                    if is_a_string(a)
                    else a for a in authors]
     depend_tags = manifest.findall('depend')

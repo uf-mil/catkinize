@@ -39,7 +39,7 @@ from catkinize.convert_cmake import convert_cmake, make_metapackage_cmake
 ##############################################################################
 # Main Logic
 ##############################################################################
-def catkinize_package(path, version):
+def catkinize_package(path, version, maintainer_emails):
     """
     Calculates a list of changes for one package.
 
@@ -55,7 +55,8 @@ def catkinize_package(path, version):
             "No rosbuild package at %s, missing manifest.xml" % manifest_path)
 
     # build the content of the potential new CMakeLists.txt and packaeg.xml
-    new_manifest = convert_manifest(path, manifest_path, version)
+    new_manifest = convert_manifest(path, manifest_path, version,
+        maintainer_emails=maintainer_emails)
     new_cmake = convert_cmake(path)
 
     filenames = ['CMakeLists.txt', 'manifest.xml', 'Makefile']
