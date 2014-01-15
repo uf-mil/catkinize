@@ -45,8 +45,6 @@ conversions = [
     ('rosbuild_add_rostest', 'add_rostest'),
     ('rosbuild_add_gtest', 'catkin_add_gtest'),
     ('rosbuild_add_pyunit', 'catkin_add_nosetests'),
-    ('rosbuild_add_executable', 'add_executable'),
-    ('rosbuild_add_library', 'add_library'),
     ('rosbuild_download_test_data', 'download_test_data'),
 #    ('rosbuild_', '')
 ]
@@ -287,6 +285,18 @@ def convert_snippet(name, funargs, project_path):
             converted = True
         elif 'genaction' == name.strip():
             snippet = 'add_action_files(\n  FILES\n' + ''.join('  %s\n' % (filename,) for filename in utils.get_action_files(project_path)) + ')'
+            converted = True
+        elif 'rosbuild_add_executable' == name.strip():
+            snippet = 'add_executable' + funargs
+            target = funargs.strip()[1:-1].split()[0].strip()
+            snippet += '\ntarget_link_libraries(%s ${catkin_LIBRARIES})' % (target,)
+            snippet += '\nadd_dependencies(%s ${catkin_EXPORTED_TARGETS})' % (target,)
+            converted = True
+        elif 'rosbuild_add_library' == name.strip():
+            snippet = 'add_library' + funargs
+            target = funargs.strip()[1:-1].split()[0].strip()
+            snippet += '\ntarget_link_libraries(%s ${catkin_LIBRARIES})' % (target,)
+            snippet += '\nadd_dependencies(%s ${catkin_EXPORTED_TARGETS})' % (target,)
             converted = True
     return snippet
 
