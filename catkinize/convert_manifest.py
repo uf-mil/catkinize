@@ -175,13 +175,19 @@ def make_from_manifest(manifest_xml_str,
     export_tags = xml_lib.xml_find(manifest, 'export').getchildren()
     exports = [(e.tag, e.attrib) for e in export_tags]
     
-    build_depends = list(depends)
-    run_depends = list(depends)
+    depends = set(depends)
+    depends.update(utils.get_message_dependencies(package_path))
+    depends.update(utils.get_service_dependencies(package_path))
+    depends.update(utils.get_action_dependencies(package_path))
+    depends.discard(package_name)
+    
+    build_depends = set(depends)
+    run_depends = set(depends)
     if utils.get_message_files(package_path) or \
             utils.get_service_files(package_path) or \
             utils.get_action_files(package_path):
-        build_depends.insert(0, 'message_generation')
-        run_depends.insert(0, 'message_runtime')
+        build_depends.add('message_generation')
+        run_depends.add('message_runtime')
     
 
     # put the collected infos into a new (package.)xml structure
