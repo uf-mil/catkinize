@@ -33,6 +33,8 @@ import os
 import sys
 import xml.etree.ElementTree as ET
 
+from catkinize import utils
+
 ##############################################################################
 # removals and stuff we can replace
 conversions = [
@@ -66,7 +68,7 @@ manual_conversions = [
 
 
 # adding ^ to the beginning of the re would discard all commented lines
-FUNCALL_PATTERN = re.compile(r'([ ]*[a-zA-Z][a-zA-Z_]+)(\s*\([^)]*\))',
+FUNCALL_PATTERN = re.compile(r'^([ ]*[a-zA-Z][a-zA-Z_]+)(\s*\([^)]*\))',
                              re.MULTILINE)
 
 # separates target from components
@@ -90,7 +92,7 @@ def convert_cmake(project_path, cmakelists_path=None, manifest_xml_path=None):
         content = f_in.read()
 
     # get dependencies from manifest file
-    dependencies_str = ' '.join(get_dependencies(manifest_xml_path))
+    dependencies = list(get_dependencies(manifest_xml_path, project_path))
 
     # anything that looks like a macro or function call (broken for nested
     # round parens)
@@ -110,7 +112,7 @@ def convert_cmake(project_path, cmakelists_path=None, manifest_xml_path=None):
         original.append(oldsnippet)
         newsnippet, components = convert_boost_snippet(name, fun_args)
         if newsnippet is None:
-            newsnippet = convert_snippet(name, fun_args)
+            newsnippet = convert_snippet(name, fun_args, project_path)
             if newsnippet != oldsnippet:
                 result.append(newsnippet)
             else:
@@ -138,20 +140,24 @@ def convert_cmake(project_path, cmakelists_path=None, manifest_xml_path=None):
     result_string = ''
     lines = content.splitlines()
     if not [l for l in lines if 'catkin_package' in l]:
-        header = make_header_lines(project_name, dependencies_str)
+        header_dependencies = set(dependencies)
+        if utils.get_message_files(project_path):
+            header_dependencies.add('message_generation')
+        
+        header = make_header_lines(project_name, ' '.join(header_dependencies))
         result_string += ('\n'.join(header))
 
     for (old_snippet, new_snippet) in zip(original, result):
         if old_snippet or new_snippet:
             result_string += (new_snippet or old_snippet)
 
-    with_messages = ('add_message_files' in result or
+    with_messages = ('add_message_files' in result_string or
                      'add_service_files' in result_string)
-    result_string += make_package_lines(dependencies_str, with_messages)
+    result_string += make_package_lines(' '.join(dependencies), with_messages, project_path)
     return result_string
 
 
-def get_dependencies(manifest_path):
+def get_dependencies(manifest_path, project_path):
     """
     Given a path to a manifest.xml file, get_dependencies() parses the file and
     yields all dependencies listed in it.
@@ -197,11 +203,11 @@ find_package(catkin REQUIRED %s)
     return header.strip().splitlines()
 
 
-def make_package_lines(deps_str, with_messages):
+def make_package_lines(deps_str, with_messages, project_path):
     PACKAGE_LINES = '''\
 ## Generate added messages and services with any dependencies listed here
 %(comment_symbol)sgenerate_messages(
-%(comment_symbol)s    #TODO DEPENDENCIES geometry_msgs std_msgs
+%(comment_symbol)s    DEPENDENCIES %(msg_dependencies)s
 %(comment_symbol)s)
 
 # catkin_package parameters: http://ros.org/doc/groovy/api/catkin/html/dev_guide/generated_cmake_api.html#catkin-package
@@ -214,15 +220,17 @@ catkin_package(
 )'''
 
     comment_symbol = '' if with_messages else '#'
+    msg_dependencies = ' '.join(utils.get_message_dependencies(project_path))
     dependencies = deps_str if deps_str.strip() else '# TODO add dependencies'
 
     return PACKAGE_LINES % {
         'comment_symbol': comment_symbol,
+        'msg_dependencies': msg_dependencies,
         'dependencies': dependencies
     }
 
 
-def convert_snippet(name, funargs):
+def convert_snippet(name, funargs, project_path):
     """
     Do all replacements that can be done for a single snippet without looking
     at anything else.
@@ -254,7 +262,7 @@ def convert_snippet(name, funargs):
             converted = True
     if not converted:
         if 'rosbuild_genmsg' == name.strip():
-            snippet = 'add_message_files(\n  FILES\n  # TODO: List your msg files here\n)'
+            snippet = 'add_message_files(\n  FILES\n' + ''.join('  %s\n' % (filename,) for filename in utils.get_message_files(project_path)) + ')'
             converted = True
         elif 'rosbuild_gensrv' == name.strip():
             snippet = 'add_service_files(\n  FILES\n  # TODO: List your msg files here\n)'

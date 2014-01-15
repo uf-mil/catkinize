@@ -33,7 +33,7 @@ import logging
 import re
 import xml.etree.ElementTree as ET
 
-from catkinize import xml_lib
+from catkinize import utils, xml_lib
 
 
 ##############################################################################
@@ -107,7 +107,8 @@ def convert_manifest(package_path,
                                          metapackage,
                                          bugtracker_url,
                                          replaces,
-                                         conflicts)
+                                         conflicts,
+                                         package_path)
             pkg_xml = '\n'.join(merge_adjacent_dups(pkg_xml.splitlines()))
             return pkg_xml
 
@@ -121,7 +122,7 @@ def make_from_manifest(manifest_xml_str,
                        package_name,
                        version,
                        architecture_independent, metapackage,
-                       bugtracker_url, replaces, conflicts):
+                       bugtracker_url, replaces, conflicts, package_path):
     """
     Return a package.xml sturcture filled with the data from the given
     manifest_xml_str.
@@ -173,6 +174,13 @@ def make_from_manifest(manifest_xml_str,
     depends = [d.attrib['package'] for d in depend_tags]
     export_tags = xml_lib.xml_find(manifest, 'export').getchildren()
     exports = [(e.tag, e.attrib) for e in export_tags]
+    
+    build_depends = list(depends)
+    run_depends = list(depends)
+    if utils.get_message_files(package_path):
+        build_depends.insert(0, 'message_generation')
+        run_depends.insert(0, 'message_runtime')
+    
 
     # put the collected infos into a new (package.)xml structure
     xml = create_project_xml(package_name=package_name,
@@ -183,8 +191,8 @@ def make_from_manifest(manifest_xml_str,
                              website_url=website_url,
                              bugtracker_url=bugtracker_url,
                              authors=authors,
-                             build_depends=depends,
-                             run_depends=depends,
+                             build_depends=build_depends,
+                             run_depends=run_depends,
                              test_depends=depends,
                              replaces=replaces,
                              conflicts=conflicts,
