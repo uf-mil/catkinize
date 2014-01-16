@@ -56,7 +56,6 @@ substitutions = [
 manual_conversions = [
     ('rosbuild_add_link_flags', '# use link_directories() include_directories(), add_definitions(), target_link_libraries() or set_target_properties'),
     ('rosbuild_remove_link_flags', '# use link_directories() include_directories(), add_definitions(), target_link_libraries() or set_target_properties'),
-    ('rosbuild_add_compile_flags', '# use link_directories() include_directories(), add_definitions(), target_link_libraries() or set_target_properties'),
     ('rosbuild_remove_compile_flags', '# use link_directories() include_directories(), add_definitions(), target_link_libraries() or set_target_properties'),
     ('rosbuild_check_for_sse', '# Find other way to find SSE'),
     ('rosbuild_include', '# use include(module) after finding the path'),
@@ -300,6 +299,13 @@ def convert_snippet(name, funargs, project_path):
             converted = True
         elif 'gencfg' == name.strip():
             snippet = 'generate_dynamic_reconfigure_options(\n' + ''.join('  cfg/%s\n' % (filename,) for filename in utils.get_config_files(project_path)) + ')'
+            converted = True
+        elif 'rosbuild_add_compile_flags' == name.strip():
+            args = funargs.strip()[1:-1].split()
+            snippet = 'set_target_properties(%s PROPERTIES COMPILE_FLAGS %s)' % (
+                args[0],
+                ' '.join(args[1:]),
+            )
             converted = True
     return snippet
 
