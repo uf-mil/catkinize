@@ -266,7 +266,7 @@ def convert_snippet(name, funargs, project_path):
                 break
     if not converted:
         if 'include' == name.strip():
-            if 'rosbuild' in funargs or 'actionbuild.cmake' in funargs:
+            if 'rosbuild' in funargs or 'actionbuild.cmake' in funargs or 'cfgbuild.cmake' in funargs:
                 snippet = comment(
                     snippet,
                     '\n# CATKIN_MIGRATION: removed during catkin migration')
@@ -297,6 +297,9 @@ def convert_snippet(name, funargs, project_path):
             target = funargs.strip()[1:-1].split()[0].strip()
             snippet += '\ntarget_link_libraries(%s ${catkin_LIBRARIES})' % (target,)
             snippet += '\nadd_dependencies(%s ${catkin_EXPORTED_TARGETS})' % (target,)
+            converted = True
+        elif 'gencfg' == name.strip():
+            snippet = 'generate_dynamic_reconfigure_options(\n' + ''.join('  cfg/%s\n' % (filename,) for filename in utils.get_config_files(project_path)) + ')'
             converted = True
     return snippet
 

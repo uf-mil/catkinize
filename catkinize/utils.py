@@ -43,3 +43,4 @@ def produce_funcs(directory, ext):
 get_message_files, get_message_dependencies = produce_funcs('msg', '.msg')
 get_service_files, get_service_dependencies = produce_funcs('srv', '.srv')
 get_action_files, get_action_dependencies = produce_funcs('action', '.action')
+get_config_files, _ = produce_funcs('cfg', '.cfg')
