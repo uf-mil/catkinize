@@ -189,7 +189,12 @@ def make_from_manifest(manifest_xml_str,
             utils.get_service_files(package_path) or \
             utils.get_action_files(package_path):
         build_depends.add('message_generation')
+        run_depends.add('message_generation')
+        build_depends.add('message_runtime')
         run_depends.add('message_runtime')
+    if utils.get_action_files(package_path):
+        build_depends.add('actionlib_msgs')
+        run_depends.add('actionlib_msgs')
     
 
     # put the collected infos into a new (package.)xml structure
