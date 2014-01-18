@@ -169,7 +169,8 @@ def convert_cmake(project_path, cmakelists_path=None, manifest_xml_path=None):
             
             if not added_package_lines and (
                     'add_library' in this_snippet or
-                    'add_executable' in this_snippet):
+                    'add_executable' in this_snippet or
+                    'add_custom' in this_snippet):
                 result_string += my_make_package_lines()
                 added_package_lines = True
             
