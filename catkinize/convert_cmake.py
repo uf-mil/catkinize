@@ -338,6 +338,12 @@ def convert_snippet(name, funargs, project_path):
                 ' '.join(args[1:]),
             )
             converted = True
+        elif 'set' == name.strip() and (
+                'EXECUTABLE_OUTPUT_PATH' in funargs or
+                'LIBRARY_OUTPUT_PATH' in funargs):
+            snippet = comment(snippet,
+                '\n# CATKIN_MIGRATION: removed during catkin migration')
+            converted = True
     return snippet
 
 
