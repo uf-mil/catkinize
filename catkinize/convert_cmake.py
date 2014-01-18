@@ -315,6 +315,9 @@ def convert_snippet(name, funargs, project_path):
     """
     snippet = '%s%s' % (name, funargs)
     converted = False
+    with_messages = utils.get_message_files(project_path) or \
+        utils.get_service_files(project_path) or \
+        utils.get_action_files(project_path)
     for a, b in conversions:
         if a == name.strip():
             if b is not None:
@@ -353,6 +356,8 @@ def convert_snippet(name, funargs, project_path):
             target = funargs.strip()[1:-1].split()[0].strip()
             snippet += '\ntarget_link_libraries(%s ${catkin_LIBRARIES})' % (target,)
             snippet += '\nadd_dependencies(%s ${catkin_EXPORTED_TARGETS})' % (target,)
+            if with_messages:
+                snippet += '\nadd_dependencies(%s ${PROJECT_NAME}_generate_messages_cpp)' % (target,)
             if utils.get_config_files(project_path):
                 snippet += '\nadd_dependencies(%s ${PROJECT_NAME}_gencfg)' % (target,)
             converted = True
@@ -361,20 +366,24 @@ def convert_snippet(name, funargs, project_path):
             target = funargs.strip()[1:-1].split()[0].strip()
             snippet += '\ntarget_link_libraries(%s ${catkin_LIBRARIES})' % (target,)
             snippet += '\nadd_dependencies(%s ${catkin_EXPORTED_TARGETS})' % (target,)
+            if with_messages:
+                snippet += '\nadd_dependencies(%s ${PROJECT_NAME}_generate_messages_cpp)' % (target,)
             if utils.get_config_files(project_path):
                 snippet += '\nadd_dependencies(%s ${PROJECT_NAME}_gencfg)' % (target,)
             converted = True
         elif 'add_custom_target' == name.strip():
             target = funargs.strip()[1:-1].split()[0].strip()
             snippet += '\nadd_dependencies(%s ${catkin_EXPORTED_TARGETS})' % (target,)
-            snippet += '\nadd_dependencies(%s ${PROJECT_NAME}_generate_message_cpp)' % (target,)
+            if with_messages:
+                snippet += '\nadd_dependencies(%s ${PROJECT_NAME}_generate_messages_cpp)' % (target,)
             if utils.get_config_files(project_path):
                 snippet += '\nadd_dependencies(%s ${PROJECT_NAME}_gencfg)' % (target,)
             converted = True
         elif 'add_custom_command' == name.strip():
             target = funargs.strip()[1:-1].split()[1].strip()
             snippet += '\nadd_custom_command(OUTPUT %s APPEND DEPENDS ${catkin_EXPORTED_TARGETS})' % (target,)
-            snippet += '\nadd_custom_command(OUTPUT %s APPEND DEPENDS ${PROJECT_NAME}_generate_message_cpp)' % (target,)
+            if with_messages:
+                snippet += '\nadd_custom_command(OUTPUT %s APPEND DEPENDS ${PROJECT_NAME}_generate_messages_cpp)' % (target,)
             if utils.get_config_files(project_path):
                 snippet += '\nadd_custom_command(OUTPUT %s APPEND DEPENDS ${PROJECT_NAME}_gencfg)' % (target,)
             converted = True
