@@ -90,11 +90,18 @@ def convert_cmake(project_path, cmakelists_path=None, manifest_xml_path=None):
         content = f_in.read()
 
     # get dependencies from manifest file
-    dependencies = set(get_dependencies(manifest_xml_path, project_path))
-    dependencies.update(utils.get_message_dependencies(project_path))
-    dependencies.update(utils.get_service_dependencies(project_path))
-    dependencies.update(utils.get_action_dependencies(project_path))
-    dependencies.discard(project_name)
+    catkin_depends, system_depends = get_dependencies(manifest_xml_path, project_path)
+    catkin_depends.update(utils.get_message_dependencies(project_path))
+    catkin_depends.update(utils.get_service_dependencies(project_path))
+    catkin_depends.update(utils.get_action_dependencies(project_path))
+    catkin_depends.discard(project_name)
+    if utils.get_message_files(project_path) or \
+            utils.get_service_files(project_path) or \
+            utils.get_action_files(project_path):
+        catkin_depends.add('message_generation')
+        catkin_depends.add('message_runtime')
+    if utils.get_action_files(project_path):
+        catkin_depends.add('actionlib_msgs')
 
     # anything that looks like a macro or function call (broken for nested
     # round parens)
@@ -142,23 +149,31 @@ def convert_cmake(project_path, cmakelists_path=None, manifest_xml_path=None):
     result_string = ''
     lines = content.splitlines()
     if not [l for l in lines if 'catkin_package' in l]:
-        header_dependencies = set(dependencies)
-        if utils.get_message_files(project_path) or \
-                utils.get_service_files(project_path) or \
-                utils.get_action_files(project_path):
-            header_dependencies.add('message_generation')
-        
-        header = make_header_lines(project_name, ' '.join(header_dependencies))
+        header = make_header_lines(project_name, ' '.join(catkin_depends))
         result_string += ('\n'.join(header))
 
+    added_package_lines = False
+    def my_make_package_lines():
+        with_messages = ('add_message_files' in result_string or
+                         'add_service_files' in result_string or
+                         'add_action_files' in result_string)
+        return make_package_lines(' '.join(catkin_depends), ' '.join(system_depends), with_messages, project_path)
+    
     for (old_snippet, new_snippet) in zip(original, result):
         if old_snippet or new_snippet:
-            result_string += (new_snippet or old_snippet)
+            this_snippet = new_snippet or old_snippet
+            
+            if not added_package_lines and (
+                    'add_library' in this_snippet or
+                    'add_executable' in this_snippet):
+                result_string += my_make_package_lines()
+                added_package_lines = True
+            
+            result_string += this_snippet
+    
+    if not added_package_lines:
+        result_string += my_make_package_lines()
 
-    with_messages = ('add_message_files' in result_string or
-                     'add_service_files' in result_string or
-                     'add_action_files' in result_string)
-    result_string += make_package_lines(' '.join(dependencies), with_messages, project_path)
     return result_string
 
 
@@ -167,16 +182,20 @@ def get_dependencies(manifest_path, project_path):
     Given a path to a manifest.xml file, get_dependencies() parses the file and
     yields all dependencies listed in it.
     """
+    catkin_depends = set()
+    system_depends = set()
     with open(manifest_path) as manifest_file:
         tree = ET.XML(manifest_file.read())
         for tag in tree.findall('depend'):
             pkg = tag.attrib.get('package')
             if pkg:
-                yield pkg
+                catkin_depends.add(pkg)
         for tag in tree.findall('rosdep'):
             pkg = tag.attrib.get('name')
             if pkg:
-                yield pkg
+                system_depends.add(pkg)
+    
+    return catkin_depends, system_depends
 
 
 def make_metapackage_cmake(name):
@@ -208,8 +227,8 @@ include_directories(include ${Boost_INCLUDE_DIR} ${catkin_INCLUDE_DIRS})
     return header.strip().splitlines()
 
 
-def make_package_lines(deps_str, with_messages, project_path):
-    PACKAGE_LINES = '''\
+def make_package_lines(deps_str, sysdeps_str, with_messages, project_path):
+    PACKAGE_LINES = '''
 ## Generate added messages and services with any dependencies listed here
 %(comment_symbol)sgenerate_messages(
 %(comment_symbol)s    DEPENDENCIES %(msg_dependencies)s
@@ -218,8 +237,8 @@ def make_package_lines(deps_str, with_messages, project_path):
 # catkin_package parameters: http://ros.org/doc/groovy/api/catkin/html/dev_guide/generated_cmake_api.html#catkin-package
 # TODO: fill in what other packages will need to use this package
 catkin_package(
-    DEPENDS %(dependencies)s
-    CATKIN_DEPENDS # TODO
+    DEPENDS %(sysdependencies)s # TODO
+    CATKIN_DEPENDS %(dependencies)s
     INCLUDE_DIRS %(include_dir)s# TODO include
     LIBRARIES # TODO
 )'''
@@ -238,6 +257,7 @@ catkin_package(
         'msg_dependencies': ' '.join(msg_dependencies),
         'dependencies': dependencies,
         'include_dir': 'include ' if os.path.exists(os.path.join(project_path, 'include')) else '',
+        'sysdependencies': sysdeps_str,
     }
 
 
