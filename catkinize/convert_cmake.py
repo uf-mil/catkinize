@@ -46,6 +46,7 @@ conversions = [
     ('rosbuild_add_gtest', 'catkin_add_gtest'),
     ('rosbuild_add_pyunit', 'catkin_add_nosetests'),
     ('rosbuild_download_test_data', 'download_test_data'),
+    ('rosbuild_find_ros_package', None),
 #    ('rosbuild_', '')
 ]
 
@@ -276,11 +277,6 @@ def convert_snippet(name, funargs, project_path):
             converted = True
         elif 'rosbuild_gensrv' == name.strip():
             snippet = 'add_service_files(\n  FILES\n' + ''.join('  %s\n' % (filename,) for filename in utils.get_service_files(project_path)) + ')'
-            converted = True
-        elif 'rosbuild_find_ros_package' == name.strip():
-            snippet = 'find_package(catkin REQUIRED %s)' % (
-                funargs.strip()[1:-1],
-            )
             converted = True
         elif 'genaction' == name.strip():
             snippet = 'add_action_files(\n  FILES\n' + ''.join('  %s\n' % (filename,) for filename in utils.get_action_files(project_path)) + ')'
