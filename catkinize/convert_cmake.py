@@ -221,8 +221,6 @@ project(%s)
 # Load catkin and all dependencies required for this package
 # TODO: remove all from COMPONENTS that are not catkin packages.
 find_package(catkin REQUIRED %s)
-
-include_directories(include ${Boost_INCLUDE_DIR} ${catkin_INCLUDE_DIRS})
 ''' % (project_name, components_str)
     return header.strip().splitlines()
 
@@ -241,7 +239,10 @@ catkin_package(
     CATKIN_DEPENDS %(dependencies)s
     INCLUDE_DIRS %(include_dir)s# TODO include
     LIBRARIES # TODO
-)'''
+)
+
+include_directories(%(include_dir)s ${Boost_INCLUDE_DIR} ${catkin_INCLUDE_DIRS})
+'''
 
     comment_symbol = '' if with_messages else '#'
     msg_dependencies = set()
@@ -252,12 +253,16 @@ catkin_package(
         msg_dependencies.add('actionlib_msgs')
     dependencies = deps_str if deps_str.strip() else '# TODO add dependencies'
 
+    include_dirs = set()
+    if os.path.exists(os.path.join(project_path, 'include')):
+        include_dirs.add('include')
+    
     return PACKAGE_LINES % {
         'comment_symbol': comment_symbol,
         'msg_dependencies': ' '.join(msg_dependencies),
         'dependencies': dependencies,
-        'include_dir': 'include ' if os.path.exists(os.path.join(project_path, 'include')) else '',
         'sysdependencies': sysdeps_str,
+        'include_dir': ' '.join(include_dirs)
     }
 
 
