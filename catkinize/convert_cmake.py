@@ -102,6 +102,10 @@ def convert_cmake(project_path, cmakelists_path=None, manifest_xml_path=None):
         catkin_depends.add('message_runtime')
     if utils.get_action_files(project_path):
         catkin_depends.add('actionlib_msgs')
+    
+    if 'eigen' in system_depends:
+        system_depends.remove('eigen')
+        system_depends.add('Eigen')
 
     # anything that looks like a macro or function call (broken for nested
     # round parens)
@@ -256,6 +260,8 @@ include_directories(%(include_dir)s ${Boost_INCLUDE_DIR} ${catkin_INCLUDE_DIRS})
     include_dirs = set()
     if os.path.exists(os.path.join(project_path, 'include')):
         include_dirs.add('include')
+    if 'Eigen' in sysdeps_str:
+        include_dirs.add('${EIGEN_INCLUDE_DIRS}')
     
     return PACKAGE_LINES % {
         'comment_symbol': comment_symbol,
