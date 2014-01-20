@@ -364,6 +364,20 @@ def convert_snippet(name, funargs, project_path):
             if utils.get_config_files(project_path):
                 snippet += '\nadd_dependencies(%s ${PROJECT_NAME}_gencfg)' % (target,)
             converted = True
+        elif 'add_custom_target' == name.strip():
+            target = funargs.strip()[1:-1].split()[0].strip()
+            snippet += '\nadd_dependencies(%s ${catkin_EXPORTED_TARGETS})' % (target,)
+            snippet += '\nadd_dependencies(%s ${PROJECT_NAME}_generate_message_cpp)' % (target,)
+            if utils.get_config_files(project_path):
+                snippet += '\nadd_dependencies(%s ${PROJECT_NAME}_gencfg)' % (target,)
+            converted = True
+        elif 'add_custom_command' == name.strip():
+            target = funargs.strip()[1:-1].split()[1].strip()
+            snippet += '\nadd_custom_command(OUTPUT %s APPEND DEPENDS ${catkin_EXPORTED_TARGETS})' % (target,)
+            snippet += '\nadd_custom_command(OUTPUT %s APPEND DEPENDS ${PROJECT_NAME}_generate_message_cpp)' % (target,)
+            if utils.get_config_files(project_path):
+                snippet += '\nadd_custom_command(OUTPUT %s APPEND DEPENDS ${PROJECT_NAME}_gencfg)' % (target,)
+            converted = True
         elif 'gencfg' == name.strip():
             snippet = 'generate_dynamic_reconfigure_options(\n' + ''.join('  cfg/%s\n' % (filename,) for filename in utils.get_config_files(project_path)) + ')'
             converted = True
