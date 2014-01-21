@@ -30,6 +30,7 @@
 from __future__ import print_function
 import re
 import os
+import string
 import sys
 import xml.etree.ElementTree as ET
 
@@ -65,9 +66,44 @@ manual_conversions = [
 ]
 
 
-# adding ^ to the beginning of the re would discard all commented lines
-FUNCALL_PATTERN = re.compile(r'^([ ]*[a-zA-Z][a-zA-Z_]+)(\s*\([^)]*\))',
-                             re.MULTILINE)
+def parse(s):
+    # emit: yield this; this = ''
+    mode = '?',
+    this = ''
+    for c in s:
+        if mode[0] == '?':
+            if c in string.whitespace:
+                this += c
+            elif c == '#':
+                this += c
+                mode = 'comment',
+            else:
+                yield this; this = ''
+                mode = 'command',
+                this += c
+        elif mode[0] == 'comment':
+            this += c
+            if c in '\r\n':
+                mode = '?',
+        elif mode[0] == 'command':
+            if c == '(':
+                yield this; this = ''
+                this += c
+                mode = 'parens', 1
+            else:
+                this += c
+        elif mode[0] == 'parens':
+            if c == '(':
+                mode = 'parens', mode[1]+1
+            elif c == ')':
+                mode = 'parens', mode[1]-1
+            this += c
+            if mode[1] == 0:
+                yield this; this = ''
+                mode = '?',
+        else:
+            assert False, mode[0]
+    yield this
 
 # separates target from components
 ARGUMENT_SPLITTER = re.compile(r'\s*\(\s*([^\s]+)\s+([^)]+)\)')
@@ -107,9 +143,8 @@ def convert_cmake(project_path, cmakelists_path=None, manifest_xml_path=None):
         system_depends.remove('eigen')
         system_depends.add('Eigen')
 
-    # anything that looks like a macro or function call (broken for nested
-    # round parens)
-    tokens = FUNCALL_PATTERN.split(content)
+    # anything that looks like a macro or function call
+    tokens = list(parse(content))
 
     # storing the originals allows interactive mode where user confirms each
     # change
