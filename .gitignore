@@ -5,3 +5,5 @@ dist
 catkinize.egg-info
 
 tags
+
+*~
