@@ -351,7 +351,12 @@ def convert_snippet(name, funargs, project_path):
             converted = True
     if not converted:
         if 'rosbuild_genmsg' == name.strip():
-            snippet = 'add_message_files(\n  FILES\n' + ''.join('  %s\n' % (filename,) for filename in utils.get_message_files(project_path)) + ')'
+            if utils.get_message_files(project_path):
+                snippet = 'add_message_files(\n  FILES\n' + ''.join('  %s\n' % (filename,) for filename in utils.get_message_files(project_path)) + ')'
+            else:
+                snippet = comment(
+                    snippet,
+                    '\n# CATKIN_MIGRATION: removed during catkin migration')
             converted = True
         elif 'rosbuild_gensrv' == name.strip():
             snippet = 'add_service_files(\n  FILES\n' + ''.join('  %s\n' % (filename,) for filename in utils.get_service_files(project_path)) + ')'
