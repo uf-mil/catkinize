@@ -34,6 +34,8 @@ import sys
 from catkinize.convert_manifest import convert_manifest, \
     make_from_stack_manifest
 from catkinize.convert_cmake import convert_cmake, make_metapackage_cmake
+from catkinize.generate_setup_py import generate_setup_py
+from catkinize import utils
 
 
 ##############################################################################
@@ -58,10 +60,15 @@ def catkinize_package(path, version, maintainer_emails):
     new_manifest = convert_manifest(path, manifest_path, version,
         maintainer_emails=maintainer_emails)
     new_cmake = convert_cmake(path)
-
+    
     filenames = ['CMakeLists.txt', 'manifest.xml', 'Makefile']
     newfiles = ['CMakeLists.txt', 'package.xml', None]
     contents = [new_cmake, new_manifest, None]
+    
+    if utils.get_python_packages(path):
+        filenames.append('setup.py')
+        newfiles.append('setup.py')
+        contents.append(generate_setup_py(path))
 
     return _create_changesets(path, filenames, newfiles, contents)
 
@@ -223,6 +230,6 @@ def _create_changesets(path, filenames, newfiles=None, contents=None):
                                   backup_file,
                                   None, None))
         elif newfile:
-            changeset.append((None, None, newfile, content))
+            changeset.append((None, None, os.path.join(path, newfile), content))
 
     return changeset

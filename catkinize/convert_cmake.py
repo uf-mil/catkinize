@@ -190,6 +190,9 @@ def convert_cmake(project_path, cmakelists_path=None, manifest_xml_path=None):
     if not [l for l in lines if 'catkin_package' in l]:
         header = make_header_lines(project_name, ' '.join(catkin_depends))
         result_string += ('\n'.join(header))
+    
+    if utils.get_python_packages(project_path):
+        result_string += '\ncatkin_python_setup()\n'
 
     added_package_lines = False
     def my_make_package_lines():
@@ -213,6 +216,11 @@ def convert_cmake(project_path, cmakelists_path=None, manifest_xml_path=None):
     
     if not added_package_lines:
         result_string += my_make_package_lines()
+    
+    if utils.get_scripts(project_path):
+        result_string += '\ninstall(PROGRAMS %s DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})\n' % (
+            ' '.join(utils.get_scripts(project_path)),
+        )
 
     return result_string
 

@@ -44,3 +44,21 @@ get_message_files, get_message_dependencies = produce_funcs('msg', '.msg')
 get_service_files, get_service_dependencies = produce_funcs('srv', '.srv')
 get_action_files, get_action_dependencies = produce_funcs('action', '.action')
 get_config_files, _ = produce_funcs('cfg', '.cfg')
+
+def get_python_packages(project_path):
+    src = os.path.join(project_path, 'src')
+    if os.path.exists(src):
+        return [dirname for dirname in os.listdir(src)
+            if os.path.exists(os.path.join(src, dirname, '__init__.py'))]
+    else:
+        return []
+
+def get_scripts(project_path):
+    res = []
+    for dirname in ['bin', 'scripts']:
+        dirpath = os.path.join(project_path, dirname)
+        if os.path.exists(dirpath):
+            res.extend(os.path.join(dirname, filename)
+                for filename in os.listdir(dirpath)
+                if not filename.endswith('~'))
+    return res
