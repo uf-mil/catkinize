@@ -56,6 +56,16 @@ def catkinize_package(path, version, maintainer_emails):
         raise ValueError(
             "No rosbuild package at %s, missing manifest.xml" % manifest_path)
 
+    # add PATH/src/NAME/__init__.py if *.py exists in PATH/src/NAME (because rosbuild did)
+    package_name = os.path.basename(os.path.abspath(path))
+    print(package_name)
+    if any(filename.endswith('.py')
+            for dirpath, dirnames, filenames in os.walk(os.path.join(path, 'src', package_name))
+            for filename in filenames):
+        if not os.path.exists(os.path.join(path, 'src', package_name, '__init__.py')):
+            with open(os.path.join(path, 'src', package_name, '__init__.py'), 'wb') as f:
+                pass
+
     # build the content of the potential new CMakeLists.txt and packaeg.xml
     new_manifest = convert_manifest(path, manifest_path, version,
         maintainer_emails=maintainer_emails)
